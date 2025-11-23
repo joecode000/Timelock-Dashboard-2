@@ -2,782 +2,537 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>DCA + Timelock Monitor</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    /* --- Base layout --- */
-    :root {
-      --bg: #050608;
-      --bg-card: #111319;
-      --bg-card-soft: #161925;
-      --border-subtle: #252838;
-      --text-main: #ffffff;
-      --text-muted: #9ca3af;
-      --accent-green: #22c55e;
-      --accent-red: #ef4444;
-      --accent-yellow: #eab308;
-      --accent-blue: #38bdf8;
-      --accent-gray: #6b7280;
-      --accent-orange: #f97316;
-      --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.55);
-      --radius-card: 18px;
-      --radius-pill: 999px;
-    }
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+  <title>Bitcoin Timelock Vault Dashboard</title>
 
+  <style>
     * {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
     }
 
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-        "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #121826 0, #050608 60%);
-      color: var(--text-main);
-      min-height: 100vh;
-      padding: 24px;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, sans-serif;
+      background: radial-gradient(circle at top, #141627 0, #050711 60%);
+      color: #f5f5f7;
     }
 
-    #dca-dashboard {
-      max-width: 1280px;
+    .dashboard {
+      max-width: 960px;
       margin: 0 auto;
-      display: grid;
-      grid-template-columns: 2fr 1.2fr;
-      grid-template-rows: auto auto 1fr;
-      grid-gap: 16px;
+      padding: 1.5rem 1rem 3rem;
     }
 
-    h1 {
-      grid-column: 1 / -1;
-      font-size: 1.8rem;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-
-    .subheading {
-      grid-column: 1 / -1;
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
-
-    .card {
-      background: linear-gradient(135deg, #111319, #050608);
-      border-radius: var(--radius-card);
-      border: 1px solid var(--border-subtle);
-      box-shadow: var(--shadow-soft);
-      padding: 16px 18px;
-    }
-
-    .card-title {
-      font-size: 0.95rem;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
-
-    .card-row {
+    .top-header {
       display: flex;
-      justify-content: space-between;
-      margin-bottom: 6px;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .title-block h1 {
+      margin: 0;
+      font-size: 1.6rem;
+    }
+
+    .title-block p {
+      margin: 0.2rem 0 0;
+      opacity: 0.8;
       font-size: 0.9rem;
     }
 
-    .label {
-      color: var(--text-muted);
+    .market-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
     }
 
-    .value {
-      font-weight: 500;
+    .strip-item {
+      flex: 1 1 180px;
+      padding: 0.7rem 0.9rem;
+      border-radius: 12px;
+      background: rgba(10, 12, 26, 0.95);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
     }
 
-    .value.green {
-      color: var(--accent-green);
-    }
-
-    .value.red {
-      color: var(--accent-red);
-    }
-
-    .value.yellow {
-      color: var(--accent-yellow);
-    }
-
-    .value.blue {
-      color: var(--accent-blue);
-    }
-
-    .value.gray {
-      color: var(--accent-gray);
-    }
-
-    /* --- Portfolio + Vault layout --- */
-    .grid-2 {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      grid-gap: 16px;
-    }
-
-    /* --- Timelock + DCA tables --- */
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 8px;
+    .strip-item .label {
       font-size: 0.8rem;
+      opacity: 0.75;
+      margin-bottom: 0.2rem;
     }
 
-    .table thead {
-      background: rgba(148, 163, 184, 0.05);
-    }
-
-    .table th,
-    .table td {
-      padding: 6px 4px;
-      text-align: left;
-      border-bottom: 1px solid rgba(31, 41, 55, 0.7);
-    }
-
-    .table th {
-      font-weight: 500;
-      color: var(--text-muted);
-      white-space: nowrap;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 2px 8px;
-      border-radius: var(--radius-pill);
-      font-size: 0.7rem;
-      font-weight: 500;
-    }
-
-    .badge.locked {
-      background: rgba(239, 68, 68, 0.12);
-      color: var(--accent-red);
-    }
-
-    .badge.unlockable-soon {
-      background: rgba(234, 179, 8, 0.18);
-      color: var(--accent-yellow);
-    }
-
-    .badge.unlocked {
-      background: rgba(34, 197, 94, 0.18);
-      color: var(--accent-green);
-    }
-
-    .badge.past-unlock {
-      background: rgba(56, 189, 248, 0.18);
-      color: var(--accent-blue);
-    }
-
-    .pill {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-    }
-
-    /* --- Price + chart placeholder --- */
-    .price-main {
-      font-size: 1.8rem;
+    .strip-item .value {
+      font-size: 1rem;
       font-weight: 600;
     }
 
-    .price-change {
-      font-size: 0.9rem;
-      font-weight: 500;
+    .card {
+      border-radius: 14px;
+      background: rgba(8, 10, 22, 0.98);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
     }
 
-    .sparkline {
-      margin-top: 10px;
-      height: 70px;
-      border-radius: 12px;
-      background: linear-gradient(180deg, rgba(248, 113, 113, 0.5), transparent);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .sparkline::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background-image: linear-gradient(
-        90deg,
-        rgba(15, 23, 42, 0.2) 1px,
-        transparent 1px
-      );
-      background-size: 16px 100%;
-      mix-blend-mode: soft-light;
-    }
-
-    .sparkline-caption {
-      margin-top: 4px;
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      text-align: right;
+    .dca-mini h2 {
+      margin: 0 0 0.6rem;
+      font-size: 1.1rem;
     }
 
     .metric-row {
       display: flex;
       justify-content: space-between;
-      font-size: 0.8rem;
-      margin-top: 6px;
+      align-items: center;
+      font-size: 0.9rem;
+      margin: 0.25rem 0;
+      gap: 0.75rem;
     }
 
-    .metric-row span:first-child {
-      color: var(--text-muted);
+    .metric-label {
+      opacity: 0.8;
     }
 
-    @media (max-width: 900px) {
-      #dca-dashboard {
-        grid-template-columns: 1fr;
-      }
-      .grid-2 {
-        grid-template-columns: 1fr;
+    .metric-value {
+      font-weight: 600;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .vault-section h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1.1rem;
+    }
+
+    .vault-card {
+      margin-top: 0.8rem;
+      padding: 0.85rem 1rem 1rem;
+      border-radius: 14px;
+      background: rgba(6, 8, 18, 0.98);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    }
+
+    .vault-header {
+      margin-bottom: 0.4rem;
+    }
+
+    .vault-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .vault-address {
+      font-size: 0.75rem;
+      opacity: 0.8;
+      word-break: break-all;
+      margin-top: 0.1rem;
+    }
+
+    .timelock-row {
+      font-size: 0.82rem;
+      opacity: 0.9;
+      margin: 0.35rem 0 0.5rem;
+    }
+
+    .vault-dashboard .metric-row {
+      font-size: 0.85rem;
+    }
+
+    .pl-positive {
+      color: #34e39a;
+    }
+
+    .pl-negative {
+      color: #ff6b6b;
+    }
+
+    .vault-notes {
+      margin-top: 0.7rem;
+      padding: 0.7rem;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 10px;
+      font-size: 0.85rem;
+    }
+
+    .vault-notes textarea {
+      width: 100%;
+      min-height: 60px;
+      margin-top: 0.35rem;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 8px;
+      padding: 0.45rem;
+      color: #fff;
+      resize: vertical;
+      font-size: 0.85rem;
+      font-family: inherit;
+    }
+
+    @media (max-width: 640px) {
+      .dashboard {
+        padding: 1rem 0.75rem 2.5rem;
       }
     }
   </style>
 </head>
 <body>
-  <div id="dca-dashboard">
-    <h1>DCA + Timelock Monitor</h1>
-    <div class="subheading">
-      Bitcoin vault, timelocks, DCA cost basis, gold market cap & macro
-      liquidity in one view.
-    </div>
-
-    <!-- Portfolio + Vault -->
-    <div class="grid-2">
-      <div class="card" id="portfolio-card">
-        <div class="card-title">Portfolio Summary</div>
-        <!-- Filled by JS -->
+  <main class="dashboard">
+    <header class="top-header">
+      <div class="title-block">
+        <h1>⏱️ Bitcoin Timelock Vaults</h1>
+        <p>On-chain DCA & Timelock Monitor</p>
       </div>
 
-      <div class="card" id="vault-card">
-        <div class="card-title">Vault Summary</div>
-        <!-- Filled by JS -->
+      <div class="market-strip">
+        <div class="strip-item">
+          <div class="label">₿ Bitcoin Price</div>
+          <div class="value" id="btc-price">Loading…</div>
+        </div>
+        <div class="strip-item">
+          <div class="label">📊 Bitcoin Market Cap</div>
+          <div class="value" id="btc-mcap">Loading…</div>
+        </div>
+        <div class="strip-item">
+          <div class="label">🥇 Gold Market Cap</div>
+          <div class="value" id="gold-mcap">$14.2T (static)</div>
+        </div>
       </div>
-    </div>
+    </header>
 
-    <!-- Timelock overview & DCA history -->
-    <div class="card" id="timelock-card" style="grid-column: 1 / 2;">
-      <div class="card-title">Timelock Overview</div>
-      <table class="table" id="timelock-table">
-        <!-- Filled by JS -->
-      </table>
-
-      <div style="margin-top: 12px; font-size: 0.85rem; color: var(--text-muted);">
-        Contribution history
+    <!-- Global mini DCA dashboard -->
+    <section id="dca-mini-dashboard" class="card dca-mini">
+      <h2>📊 DCA Snapshot</h2>
+      <div class="metric-row">
+        <span class="metric-label">💸 Total invested</span>
+        <span class="metric-value" id="mini-total-invested">$0.00</span>
       </div>
-      <table class="table" id="dca-table">
-        <!-- Filled by JS -->
-      </table>
-    </div>
+      <div class="metric-row">
+        <span class="metric-label">🪙 BTC accumulated</span>
+        <span class="metric-value" id="mini-btc-accumulated">0.00000000 BTC</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">⚡ Sats accumulated</span>
+        <span class="metric-value" id="mini-sats-accumulated">0 sats</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">🎯 Blended average</span>
+        <span class="metric-value" id="mini-blended-avg">$0.00 / BTC</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">📈 Current value</span>
+        <span class="metric-value" id="mini-current-value">$0.00</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">💹 P/L & ROI</span>
+        <span class="metric-value" id="mini-pl-roi">+$0.00 (0.00%)</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">⏳ Time in market</span>
+        <span class="metric-value" id="mini-time-in-market">0 days</span>
+      </div>
+    </section>
 
-    <!-- Price + Macro -->
-    <div class="card" id="price-card" style="grid-column: 2 / 3;">
-      <div class="card-title">Price + Market</div>
-      <div id="price-main-block"></div>
-      <div style="border-top: 1px solid rgba(31, 41, 55, 0.9); margin: 12px 0;"></div>
-      <div class="card-title" style="margin-top: 0;">Global Liquidity</div>
-      <div id="macro-block"></div>
-      <div style="border-top: 1px solid rgba(31, 41, 55, 0.9); margin: 12px 0;"></div>
-      <div class="card-title" style="margin-top: 0;">Gold Market Cap</div>
-      <div id="gold-block"></div>
-    </div>
-  </div>
+    <!-- Vault breakdown -->
+    <section class="vault-section">
+      <h2>🧱 Vault Breakdown</h2>
+      <div id="vault-list"></div>
+    </section>
+  </main>
 
   <script>
-    /* ==========================================================
-       1. DATA MODEL – All requested data points are represented here
-       ========================================================== */
+    const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
-    const dashboardData = {
-      portfolio: {
-        totalBTC: 0.01299249, // total held across all addresses
-        totalInvestedUSD: 500, // you can replace with your total USD invested
-        costBasisUSD: 500, // same as invested for simple example
-        currentBTCPriceUSD: 61700, // placeholder, normally from API
-      },
-      vault: {
-        initialFundingUSD: 500,
-        initialDate: "2022-03-12",
-        // These are descriptive; you can calculate real values later:
-        performanceNote: "Tracking performance of initial $500 vault since 03/12/22.",
-        yieldNote: "Yield is measured vs. simply holding BTC at today's price."
-      },
-      price: {
-        btcUSD: 61700.24,
-        change24hPct: -0.9,
-        volume24h: "29.17B",
-        dominancePct: 54.3,
-        hashrateEHs: 523,  // exahash per second
-        difficultyT: 66.0  // trillions, placeholder
-      },
-      gold: {
-        pricePerOunceUSD: 2450,    // placeholder value
-        totalTons: 205000,         // est. above-ground gold
-      },
-      macro: {
-        fedBalanceSheetUSDTrillions: 7.45,
-        rrpUSDTrillions: 0.54,
-        tgaUSDTrillions: 0.66,
-        m2ChangePctYoY: -8.3
-      },
-      dcaEntries: [
-        {
-          date: "2023-01-15",
-          amountUSD: 1500,
-          btcPriceUSD: 22000,
-          status: "Locked",
-          unlockDate: "2026-01-01T12:00:00Z"
-        },
-        {
-          date: "2023-04-07",
-          amountUSD: 5000,
-          btcPriceUSD: 29000,
-          status: "Unlockable",
-          unlockDate: "2026-04-01T12:00:00Z"
-        },
-        {
-          date: "2023-07-20",
-          amountUSD: 5000,
-          btcPriceUSD: 30500,
-          status: "Past",
-          unlockDate: "2025-07-20T12:00:00Z"
-        },
-        {
-          date: "2023-10-10",
-          amountUSD: 196,
-          btcPriceUSD: 28000,
-          status: "Locked",
-          unlockDate: "2027-01-01T12:00:00Z"
-        }
-      ],
-      timelocks: [
-        {
-          address: "3ECBoJHeYwz4qDdovgHhME3Une89Zw63Ah",
-          unlockDate: "2026-01-01T12:00:00Z",   // 1/1/26 12:00 UTC
-          redeemScript: "76a914...ac01",         // placeholder – paste real script
-          requiredBlockHeight: 900000,           // example
-          currentBlockHeight: 865000,            // example
-          btcValue: 0.003,
-          status: "locked",
-          note: "Q1 2026 vault timelock"
-        },
-        {
-          address: "346AQ1Gz8AP9rmzupgj36vsuecjyNdtqt4",
-          unlockDate: "2026-04-01T12:00:00Z",   // 4/1/26
-          redeemScript: "76a914...ac02",
-          requiredBlockHeight: 910000,
-          currentBlockHeight: 865000,
-          btcValue: 0.0035,
-          status: "locked",
-          note: "Q2 2026 vault timelock"
-        },
-        {
-          address: "3EXAMPLEQ3ADDRESS0000000000000000",
-          unlockDate: "2026-07-01T12:00:00Z",
-          redeemScript: "76a914...ac03",
-          requiredBlockHeight: 920000,
-          currentBlockHeight: 865000,
-          btcValue: 0.0035,
-          status: "unlockable-soon",
-          note: "Unlockable within 30d"
-        },
-        {
-          address: "3EXAMPLEPASTUNLOCK00000000000000",
-          unlockDate: "2025-01-01T12:00:00Z",
-          redeemScript: "76a914...ac04",
-          requiredBlockHeight: 830000,
-          currentBlockHeight: 865000,
-          btcValue: 0.003,
-          status: "past-unlock",
-          note: "Past unlock time – check status"
-        }
-      ]
-    };
+    // Static estimate for total above-ground gold x price
+    const GOLD_MARKET_CAP = 14_200_000_000_000; // ~$14.2T
 
-    /* ==========================================================
-       2. HELPER FUNCTIONS
-       ========================================================== */
+    // Timelock vaults
+    const vaults = [
+      {
+        label: "2022 – Vault 1",
+        address: "3KMrnQymf9gfu1QzYTepCGy8rv4Je2nHby",
+        investedUsd: 500.0,
+        btcAmount: 0.01299249,
+        startDate: "2022-03-12", // 🔐 lock date
+        unlockDate: null,        // no expiration shown for this vault
+        notes: "🎯 First base vault started March 12, 2022."
+      },
 
-    function formatUSD(value) {
-      return "$" + value.toLocaleString("en-US", {
+      // Future timelock vault placeholders – adjust amounts & notes as you fund them
+      {
+        label: "2026-01-01 – Timelock Vault",
+        address: "3ECBoJHeYwz4qDdovgHhME3Une89Zw63Ah",
+        investedUsd: 0.0,
+        btcAmount: 0.0,
+        startDate: "2026-01-01",
+        unlockDate: "2026-01-01T12:00:00Z",
+        notes: "🔐 Placeholder for 1 Jan 2026 timelock."
+      },
+      {
+        label: "2026-04-01 – Timelock Vault",
+        address: "346AQ1Gz8AP9rmzupgj36vsuecjyNdtqt4",
+        investedUsd: 0.0,
+        btcAmount: 0.0,
+        startDate: "2026-04-01",
+        unlockDate: "2026-04-01T12:00:00Z",
+        notes: "🔐 Placeholder for 1 Apr 2026 timelock."
+      }
+    ];
+
+    function saveVaultNotes(address, text) {
+      localStorage.setItem(`vault-notes-${address}`, text);
+    }
+
+    function getStoredNotes(address) {
+      return localStorage.getItem(`vault-notes-${address}`) || "";
+    }
+
+    function formatUsd(num) {
+      return `$${num.toLocaleString(undefined, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
-      });
+      })}`;
     }
 
-    function formatBTC(value) {
-      return value.toFixed(8) + " BTC";
+    function formatNumber(num) {
+      return num.toLocaleString();
     }
 
-    function formatPercent(value) {
-      return value.toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }) + "%";
-    }
-
-    function formatDate(dateStr) {
-      const d = new Date(dateStr);
-      return d.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit"
-      });
-    }
-
-    function computeCountdown(dateStr) {
-      const now = new Date();
-      const target = new Date(dateStr);
-      const diffMs = target - now;
-      if (diffMs <= 0) return "00d 00h 00m";
-
-      const totalMinutes = Math.floor(diffMs / 60000);
-      const days = Math.floor(totalMinutes / (60 * 24));
-      const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
-      const minutes = totalMinutes % 60;
-
-      const pad = (n) => String(n).padStart(2, "0");
-      return `${pad(days)}d ${pad(hours)}h ${pad(minutes)}m`;
-    }
-
-    function calcGoldMarketCap(gold) {
-      const tonsToOunces = gold.totalTons * 32150.7466; // troy ounces
-      const marketCap = tonsToOunces * gold.pricePerOunceUSD;
-      return { ounces: tonsToOunces, marketCap };
-    }
-
-    /* ==========================================================
-       3. RENDERING FUNCTIONS
-       ========================================================== */
-
-    function renderPortfolio() {
-      const { portfolio } = dashboardData;
-      const currentValue =
-        portfolio.totalBTC * portfolio.currentBTCPriceUSD;
-      const profitLoss = currentValue - portfolio.totalInvestedUSD;
+    function computeVaultMetrics(vault, btcPrice) {
+      const currentValue = vault.btcAmount * btcPrice;
+      const pl = currentValue - vault.investedUsd;
       const roiPct =
-        portfolio.totalInvestedUSD > 0
-          ? (profitLoss / portfolio.totalInvestedUSD) * 100
-          : 0;
+        vault.investedUsd > 0 ? (pl / vault.investedUsd) * 100 : 0;
+      const blendedAverage =
+        vault.btcAmount > 0 ? vault.investedUsd / vault.btcAmount : 0;
+      const sats = Math.round(vault.btcAmount * 100_000_000);
 
-      const card = document.getElementById("portfolio-card");
-      card.innerHTML = `
-        <div class="card-title">Portfolio Summary</div>
-        <div class="card-row">
-          <div class="label">Total BTC</div>
-          <div class="value">${formatBTC(portfolio.totalBTC)}</div>
-        </div>
-        <div class="card-row">
-          <div class="label">Total invested</div>
-          <div class="value">${formatUSD(
-            portfolio.totalInvestedUSD
-          )}</div>
-        </div>
-        <div class="card-row">
-          <div class="label">Cost basis</div>
-          <div class="value">${formatUSD(
-            portfolio.costBasisUSD
-          )}</div>
-        </div>
-        <div class="card-row">
-          <div class="label">ROI %</div>
-          <div class="value ${
-            roiPct >= 0 ? "green" : "red"
-          }">${formatPercent(roiPct)}</div>
-        </div>
-        <div class="card-row">
-          <div class="label">Profit / Loss</div>
-          <div class="value ${
-            profitLoss >= 0 ? "green" : "red"
-          }">${formatUSD(profitLoss)}</div>
-        </div>
-      `;
+      let daysInMarket = 0;
+      if (vault.startDate) {
+        const start = new Date(vault.startDate);
+        const now = new Date();
+        daysInMarket = Math.floor((now - start) / MS_PER_DAY);
+      }
+
+      return {
+        currentValue,
+        pl,
+        roiPct,
+        blendedAverage,
+        sats,
+        daysInMarket
+      };
     }
 
-    function renderVault() {
-      const { vault, portfolio } = dashboardData;
-      const currentValue =
-        (vault.initialFundingUSD / portfolio.costBasisUSD) *
-        portfolio.totalBTC *
-        portfolio.currentBTCPriceUSD;
+    function computeGlobalMetrics(btcPrice) {
+      let totalInvested = 0;
+      let totalBtc = 0;
+      let earliestDate = null;
 
-      const card = document.getElementById("vault-card");
-      card.innerHTML = `
-        <div class="card-title">Vault Summary</div>
-        <div class="card-row">
-          <div class="label">Initial vault funding</div>
-          <div class="value">${formatUSD(
-            vault.initialFundingUSD
-          )}</div>
-        </div>
-        <div class="card-row">
-          <div class="label">Vault created</div>
-          <div class="value">${formatDate(vault.initialDate)}</div>
-        </div>
-        <div class="card-row">
-          <div class="label">Est. vault value (at BTC today)</div>
-          <div class="value">${formatUSD(currentValue)}</div>
-        </div>
-        <div style="margin-top: 8px; font-size: 0.8rem; color: var(--text-muted);">
-          ${vault.performanceNote}<br/>
-          ${vault.yieldNote}
-        </div>
-      `;
+      vaults.forEach((vault) => {
+        totalInvested += vault.investedUsd;
+        totalBtc += vault.btcAmount;
+
+        if (vault.startDate) {
+          const d = new Date(vault.startDate);
+          if (!earliestDate || d < earliestDate) earliestDate = d;
+        }
+      });
+
+      const totalSats = Math.round(totalBtc * 100_000_000);
+      const currentValue = totalBtc * btcPrice;
+      const pl = currentValue - totalInvested;
+      const roiPct =
+        totalInvested > 0 ? (pl / totalInvested) * 100 : 0;
+      const blendedAverage =
+        totalBtc > 0 ? totalInvested / totalBtc : 0;
+
+      let daysInMarket = 0;
+      if (earliestDate) {
+        const now = new Date();
+        daysInMarket = Math.floor((now - earliestDate) / MS_PER_DAY);
+      }
+
+      return {
+        totalInvested,
+        totalBtc,
+        totalSats,
+        currentValue,
+        pl,
+        roiPct,
+        blendedAverage,
+        daysInMarket
+      };
     }
 
-    function statusBadgeClass(status) {
-      switch (status) {
-        case "locked":
-          return "locked";
-        case "unlockable-soon":
-          return "unlockable-soon";
-        case "unlocked":
-          return "unlocked";
-        case "past-unlock":
-          return "past-unlock";
-        default:
-          return "locked";
+    function renderGlobalMiniDashboard(btcPrice) {
+      const g = computeGlobalMetrics(btcPrice);
+
+      document.getElementById("mini-total-invested").textContent =
+        formatUsd(g.totalInvested);
+      document.getElementById("mini-btc-accumulated").textContent =
+        `${g.totalBtc.toFixed(8)} BTC`;
+      document.getElementById("mini-sats-accumulated").textContent =
+        `${formatNumber(g.totalSats)} sats`;
+      document.getElementById("mini-blended-avg").textContent =
+        `${formatUsd(g.blendedAverage)} / BTC`;
+      document.getElementById("mini-current-value").textContent =
+        formatUsd(g.currentValue);
+
+      const plRoiEl = document.getElementById("mini-pl-roi");
+      const sign = g.pl >= 0 ? "+" : "";
+      plRoiEl.textContent =
+        `${sign}${formatUsd(g.pl)} (${g.roiPct.toFixed(2)}%)`;
+      plRoiEl.classList.toggle("pl-positive", g.pl >= 0);
+      plRoiEl.classList.toggle("pl-negative", g.pl < 0);
+
+      document.getElementById("mini-time-in-market").textContent =
+        `${g.daysInMarket} days`;
+    }
+
+    function renderVaults(btcPrice) {
+      const container = document.getElementById("vault-list");
+      container.innerHTML = "";
+
+      vaults.forEach((vault) => {
+        const m = computeVaultMetrics(vault, btcPrice);
+
+        const start = vault.startDate ? new Date(vault.startDate) : null;
+        const unlock = vault.unlockDate ? new Date(vault.unlockDate) : null;
+
+        const startLabel = start
+          ? start.toLocaleDateString(undefined, {
+              year: "numeric",
+              month: "short",
+              day: "numeric"
+            })
+          : "N/A";
+
+        let timelineText = "";
+        if (start && unlock) {
+          const unlockLabel = unlock.toLocaleDateString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "numeric"
+          });
+          timelineText = `🔐 ${startLabel} → ${unlockLabel} (⏳ ${m.daysInMarket} days)`;
+        } else if (start && !unlock) {
+          timelineText = `🔐 ${startLabel} (⏳ ${m.daysInMarket} days)`;
+        } else {
+          timelineText = "🔐 N/A";
+        }
+
+        const existingNotes =
+          getStoredNotes(vault.address) || vault.notes || "";
+
+        const html = `
+          <div class="vault-card">
+            <div class="vault-header">
+              <div class="vault-title">🧱 ${vault.label}</div>
+              <div class="vault-address">🔑 ${vault.address}</div>
+            </div>
+
+            <div class="timelock-row">
+              ${timelineText}
+            </div>
+
+            <div class="vault-dashboard">
+              <div class="metric-row">
+                <span class="metric-label">💸 Total invested</span>
+                <span class="metric-value">${formatUsd(
+                  vault.investedUsd
+                )}</span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-label">🪙 BTC accumulated</span>
+                <span class="metric-value">${vault.btcAmount.toFixed(
+                  8
+                )} BTC</span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-label">⚡ Sats accumulated</span>
+                <span class="metric-value">${formatNumber(
+                  m.sats
+                )} sats</span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-label">🎯 Blended average</span>
+                <span class="metric-value">${formatUsd(
+                  m.blendedAverage
+                )} / BTC</span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-label">📈 Current value</span>
+                <span class="metric-value">${formatUsd(
+                  m.currentValue
+                )}</span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-label">💹 P/L & ROI</span>
+                <span class="metric-value ${
+                  m.pl >= 0 ? "pl-positive" : "pl-negative"
+                }">
+                  ${(m.pl >= 0 ? "+" : "") + formatUsd(m.pl)}
+                  (${m.roiPct.toFixed(2)}%)
+                </span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-label">⏳ Time in market</span>
+                <span class="metric-value">${m.daysInMarket} days</span>
+              </div>
+            </div>
+
+            <div class="vault-notes">
+              <strong>📝 Notes</strong>
+              <textarea
+                placeholder="Add notes for this vault…"
+                oninput="saveVaultNotes('${vault.address}', this.value)"
+              >${existingNotes}</textarea>
+            </div>
+          </div>
+        `;
+
+        container.insertAdjacentHTML("beforeend", html);
+      });
+    }
+
+    async function loadBitcoinData() {
+      try {
+        const res = await fetch(
+          "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_market_cap=true"
+        );
+        const data = await res.json();
+        const price = data.bitcoin.usd;
+        const mcap = data.bitcoin.usd_market_cap;
+
+        const priceEl = document.getElementById("btc-price");
+        const mcapEl = document.getElementById("btc-mcap");
+        const goldEl = document.getElementById("gold-mcap");
+
+        if (priceEl) {
+          priceEl.textContent = `$${price.toLocaleString()}`;
+        }
+        if (mcapEl) {
+          mcapEl.textContent = `$${mcap.toLocaleString()}`;
+        }
+        if (goldEl) {
+          goldEl.textContent = "$14.2T (static est.)";
+        }
+
+        renderGlobalMiniDashboard(price);
+        renderVaults(price);
+      } catch (err) {
+        console.error("Error loading BTC data:", err);
       }
     }
 
-    function statusLabel(status) {
-      switch (status) {
-        case "locked":
-          return "Locked";
-        case "unlockable-soon":
-          return "Unlockable soon";
-        case "unlocked":
-          return "Unlocked";
-        case "past-unlock":
-          return "Past unlock time";
-        default:
-          return status;
-      }
-    }
-
-    function renderTimelocks() {
-      const { timelocks, portfolio } = dashboardData;
-      const table = document.getElementById("timelock-table");
-
-      const rows = timelocks
-        .map((tl) => {
-          const usdValue =
-            tl.btcValue * portfolio.currentBTCPriceUSD;
-          const blocksRemaining =
-            tl.requiredBlockHeight - tl.currentBlockHeight;
-          const countdown = computeCountdown(tl.unlockDate);
-
-          return `
-          <tr>
-            <td>${tl.address}</td>
-            <td>${formatDate(tl.unlockDate)}</td>
-            <td>${tl.redeemScript}</td>
-            <td>${tl.requiredBlockHeight.toLocaleString()}</td>
-            <td>${tl.currentBlockHeight.toLocaleString()}</td>
-            <td>${blocksRemaining > 0 ? blocksRemaining.toLocaleString() : "0"}</td>
-            <td>${formatBTC(tl.btcValue)}</td>
-            <td>${formatUSD(usdValue)}</td>
-            <td>
-              <span class="badge ${statusBadgeClass(tl.status)}">
-                ${statusLabel(tl.status)}
-              </span>
-            </td>
-            <td><span class="pill">${countdown}</span></td>
-          </tr>
-        `;
-        })
-        .join("");
-
-      table.innerHTML = `
-        <thead>
-          <tr>
-            <th>Address</th>
-            <th>Unlock Date</th>
-            <th>Redeem Script</th>
-            <th>Req. Block</th>
-            <th>Current Block</th>
-            <th>Blocks Remaining</th>
-            <th>BTC Value</th>
-            <th>USD Value</th>
-            <th>Status</th>
-            <th>Countdown</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows}
-        </tbody>
-      `;
-    }
-
-    function renderDCA() {
-      const { dcaEntries } = dashboardData;
-      const table = document.getElementById("dca-table");
-
-      const rows = dcaEntries
-        .map((entry) => {
-          const countdown = computeCountdown(entry.unlockDate);
-          const status =
-            entry.status === "Unlockable"
-              ? "unlockable-soon"
-              : entry.status === "Past"
-              ? "past-unlock"
-              : "locked";
-
-          return `
-          <tr>
-            <td>${formatDate(entry.date)}</td>
-            <td>${formatUSD(entry.amountUSD)}</td>
-            <td>${formatUSD(entry.btcPriceUSD)}</td>
-            <td>
-              <span class="badge ${statusBadgeClass(status)}">
-                ${entry.status}
-              </span>
-            </td>
-            <td><span class="pill">${countdown}</span></td>
-          </tr>
-        `;
-        })
-        .join("");
-
-      table.innerHTML = `
-        <thead>
-          <tr>
-            <th>DCA Date</th>
-            <th>Amount (USD)</th>
-            <th>BTC Price</th>
-            <th>Status</th>
-            <th>Countdown to Unlock</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows}
-        </tbody>
-      `;
-    }
-
-    function renderPriceBlock() {
-      const { price } = dashboardData;
-      const container = document.getElementById("price-main-block");
-      const changeClass =
-        price.change24hPct >= 0 ? "green" : "red";
-
-      container.innerHTML = `
-        <div class="card-row" style="align-items: baseline;">
-          <div>
-            <div class="label">Bitcoin (BTC / USD)</div>
-            <div class="price-main">${formatUSD(price.btcUSD)}</div>
-          </div>
-          <div class="price-change ${changeClass}">
-            ${formatPercent(price.change24hPct)}
-          </div>
-        </div>
-        <div class="sparkline"></div>
-        <div class="sparkline-caption">
-          24h price action (placeholder sparkline)
-        </div>
-        <div class="metric-row">
-          <span>24h Volume</span>
-          <span>${price.volume24h}</span>
-        </div>
-        <div class="metric-row">
-          <span>BTC Dominance</span>
-          <span>${formatPercent(price.dominancePct)}</span>
-        </div>
-        <div class="metric-row">
-          <span>Hashrate</span>
-          <span>${price.hashrateEHs.toLocaleString()} EH/s</span>
-        </div>
-        <div class="metric-row">
-          <span>Difficulty</span>
-          <span>${price.difficultyT.toFixed(2)} T</span>
-        </div>
-      `;
-    }
-
-    function renderMacro() {
-      const { macro } = dashboardData;
-      const container = document.getElementById("macro-block");
-      const m2Class =
-        macro.m2ChangePctYoY >= 0 ? "green" : "red";
-
-      container.innerHTML = `
-        <div class="metric-row">
-          <span>Fed balance sheet</span>
-          <span>${macro.fedBalanceSheetUSDTrillions.toFixed(
-            2
-          )} T</span>
-        </div>
-        <div class="metric-row">
-          <span>Reverse Repo (RRP)</span>
-          <span>${macro.rrpUSDTrillions.toFixed(2)} T</span>
-        </div>
-        <div class="metric-row">
-          <span>Treasury General Account (TGA)</span>
-          <span>${macro.tgaUSDTrillions.toFixed(2)} T</span>
-        </div>
-        <div class="metric-row">
-          <span>M2 change (YoY)</span>
-          <span class="${m2Class}">${formatPercent(
-            macro.m2ChangePctYoY
-          )}</span>
-        </div>
-      `;
-    }
-
-    function renderGold() {
-      const { gold } = dashboardData;
-      const { ounces, marketCap } = calcGoldMarketCap(gold);
-
-      const container = document.getElementById("gold-block");
-      container.innerHTML = `
-        <div class="metric-row">
-          <span>Spot price</span>
-          <span>${formatUSD(gold.pricePerOunceUSD)} / oz</span>
-        </div>
-        <div class="metric-row">
-          <span>Estimated above-ground supply</span>
-          <span>${ounces.toLocaleString(undefined, {
-            maximumFractionDigits: 0
-          })} oz</span>
-        </div>
-        <div class="metric-row">
-          <span>Estimated market cap</span>
-          <span>${formatUSD(marketCap)}</span>
-        </div>
-        <div style="margin-top: 6px; font-size: 0.75rem; color: var(--text-muted);">
-          Market cap is approximated as price per ounce × estimated total ounces
-          (tons × 32,150.7466).
-        </div>
-      `;
-    }
-
-    /* ==========================================================
-       4. INITIAL RENDER
-       ========================================================== */
-
-    function renderDashboard() {
-      renderPortfolio();
-      renderVault();
-      renderTimelocks();
-      renderDCA();
-      renderPriceBlock();
-      renderMacro();
-      renderGold();
-    }
-
-    renderDashboard();
-
-    // Optional: re-render countdowns every minute.
-    setInterval(() => {
-      renderTimelocks();
-      renderDCA();
-    }, 60 * 1000);
+    // Initial load + periodic refresh
+    loadBitcoinData();
+    // Refresh every 60 seconds (optional)
+    setInterval(loadBitcoinData, 60_000);
   </script>
 </body>
 </html>
