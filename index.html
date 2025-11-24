@@ -77,12 +77,9 @@
       margin-bottom: 1.25rem;
     }
 
-    .card h2 {
-      margin: 0 0 0.75rem;
-      font-size: 1.2rem;
-    }
-
     .vault-section h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1.2rem;
       display: flex;
       align-items: center;
       gap: 0.4rem;
@@ -204,7 +201,7 @@
 </head>
 <body>
   <main class="dashboard">
-    <!-- HEADER + MARKET CAP -->
+    <!-- ONLY TOP METRICS -->
     <header class="top-header">
       <div class="title-block">
         <h1>🕰️ Bitcoin Timelock Vaults</h1>
@@ -227,7 +224,7 @@
       </div>
     </header>
 
-    <!-- VAULT BREAKDOWN (no DCA Snapshot card anymore) -->
+    <!-- STRAIGHT VERTICAL VAULT BREAKDOWN -->
     <section class="card vault-section">
       <h2>🧱 Vault Breakdown</h2>
       <div id="vault-list"></div>
@@ -236,9 +233,9 @@
 
   <script>
     const MS_PER_DAY = 1000 * 60 * 60 * 24;
-    const GOLD_MARKET_CAP = 14_200_000_000_000; // static estimate
+    const GOLD_MARKET_CAP = 14_200_000_000_000; // static est.
 
-    // === VAULT DATA ===
+    // VAULT DATA
     const vaults = [
       {
         // renamed as requested
@@ -246,8 +243,8 @@
         address: "3KMrnQymf9gfu1QzYTepCGy8rv4Je2nHby",
         investedUsd: 500.0,
         btcAmount: 0.01299249,
-        startDate: "2022-03-12",                   // lock date (exact)
-        unlockDate: "2027-03-12T12:00:00Z",        // 🔁 set your exact unlock here
+        startDate: "2022-03-12",                // lock date
+        unlockDate: "2027-03-12T12:00:00Z",     // set your exact unlock
         notes: "🎯 First base vault started March 12, 2022."
       },
       {
@@ -270,7 +267,7 @@
       }
     ];
 
-    // === NOTES (localStorage) ===
+    // NOTES (localStorage)
     function saveVaultNotes(address, text) {
       localStorage.setItem(`vault-notes-${address}`, text);
     }
@@ -279,7 +276,7 @@
       return localStorage.getItem(`vault-notes-${address}`) || "";
     }
 
-    // === HELPERS ===
+    // HELPERS
     function formatUsd(num) {
       return `$${num.toLocaleString(undefined, {
         minimumFractionDigits: 2,
@@ -343,7 +340,7 @@
       }
     }
 
-    // === RENDER VAULT CARDS ===
+    // RENDER VAULT CARDS (VERTICAL STACK)
     function renderVaults(btcPrice) {
       const container = document.getElementById("vault-list");
       container.innerHTML = "";
@@ -392,7 +389,7 @@
         const existingNotes =
           getStoredNotes(vault.address) || vault.notes || "";
 
-        const cardHtml = `
+        const html = `
           <div class="vault-card">
             <div class="vault-header">
               <div class="vault-title">🧱 ${vault.label}</div>
@@ -416,7 +413,9 @@
               </div>
               <div class="metric-row">
                 <span class="metric-label">🎯 Blended average</span>
-                <span class="metric-value">${m.blendedAverage ? formatUsd(m.blendedAverage) : "$0.00 / BTC"}</span>
+                <span class="metric-value">${
+                  m.blendedAverage ? formatUsd(m.blendedAverage) : "$0.00 / BTC"
+                }</span>
               </div>
               <div class="metric-row">
                 <span class="metric-label">📈 Current value</span>
@@ -437,18 +436,15 @@
 
             <div class="vault-notes">
               <div class="vault-notes-title">📝 Notes</div>
-              <textarea
-                placeholder="Add notes for this vault…"
-              >${existingNotes}</textarea>
+              <textarea placeholder="Add notes for this vault…">${existingNotes}</textarea>
             </div>
           </div>
         `;
 
         const wrapper = document.createElement("div");
-        wrapper.innerHTML = cardHtml.trim();
+        wrapper.innerHTML = html.trim();
         const cardEl = wrapper.firstElementChild;
 
-        // hook up notes saving
         const textarea = cardEl.querySelector("textarea");
         textarea.addEventListener("input", (e) => {
           saveVaultNotes(vault.address, e.target.value);
@@ -458,7 +454,7 @@
       });
     }
 
-    // === BTC + GOLD + RENDER ===
+    // TOP METRICS + RENDER
     async function loadBitcoinData() {
       try {
         const res = await fetch(
